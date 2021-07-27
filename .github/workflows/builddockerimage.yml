@@ -1,0 +1,43 @@
+# Bearbeitet einen push auf main bzw. release/*
+#
+# Es wird ein Deployment in Artifactory ausgelöst
+#
+# Ausführung:
+#   automatisch bei push auf main bzw. release/*
+#   manuell auf main bzw. release/*
+#
+# Voraussetzungen:
+# Es müssen die Secrets für den Zugriff auf Artifactory vorhanden sein
+#
+name: Build Docker Image
+
+on:
+  workflow_dispatch:
+    paths-ignore: [ '.github/**', '.idea/**' ]
+  push:
+    branches:
+      - master
+
+env:
+  DOCKER_IMAGE: demo:${{ github.sha }}
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Build Docker image
+        run: |
+          echo DOCKER_HOST=$DOCKER_HOST
+          echo DOCKER_TLS_VERIFY=$DOCKER_TLS_VERIFY
+          echo DOCKER_CERT_PATH=$DOCKER_CERT_PATH
+          mvn spring-boot:build-image -X -Dspring-boot.build-image.imageName=${{ env.DOCKER_IMAGE }} -DskipTests --no-transfer-progress
